@@ -1,0 +1,1334 @@
+{
+  "info": {
+    "name": "ShopKart — Labs 04–06 Wishlist, Cart, Checkout & Orders API Checks",
+    "description": "Postman API coverage for Labs 04–06. Lab 06 includes checkout/order and Razorpay signature checks; the genuine successful Test Mode payment check is optional and manual.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "anonymousBaseUrl",
+      "value": "http://127.0.0.1:5000"
+    },
+    {
+      "key": "testEmail",
+      "value": ""
+    },
+    {
+      "key": "testPassword",
+      "value": "Lab04Check!26"
+    },
+    {
+      "key": "tempProductName",
+      "value": ""
+    },
+    {
+      "key": "productId",
+      "value": ""
+    },
+    {
+      "key": "lab06TestEmail",
+      "value": ""
+    },
+    {
+      "key": "lab06TestPassword",
+      "value": "Lab06Check!26"
+    },
+    {
+      "key": "lab06OtherEmail",
+      "value": ""
+    },
+    {
+      "key": "lab06ProductName",
+      "value": ""
+    },
+    {
+      "key": "lab06ProductId",
+      "value": ""
+    },
+    {
+      "key": "lab06RunStockTest",
+      "value": "false"
+    },
+    {
+      "key": "lab06ShopKartOrderId",
+      "value": ""
+    },
+    {
+      "key": "lab06RazorpayOrderId",
+      "value": ""
+    },
+    {
+      "key": "lab06RazorpayPaymentId",
+      "value": ""
+    },
+    {
+      "key": "lab06RazorpaySignature",
+      "value": ""
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('testEmail')) pm.collectionVariables.set('testEmail', 'lab04.postman.' + Date.now() + '@example.test');",
+          "if (!pm.collectionVariables.get('tempProductName')) pm.collectionVariables.set('tempProductName', 'Lab04 Postman Temp ' + Date.now());"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Register temporary test customer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Customer registration returns 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.test('Registration succeeds and does not return a password', function () { pm.expect(body.success).to.eql(true); pm.expect(body.customer).to.have.property('_id'); pm.expect(body.customer).not.to.have.property('password'); });",
+              "pm.collectionVariables.set('customerId', body.customer._id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"Lab 04 Postman Verification\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\",\n  \"phone\": \"0000000000\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/customers/register"
+      }
+    },
+    {
+      "name": "1. Login and receive HttpOnly cookie",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Login returns 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Login response does not return password', function () { pm.expect(pm.response.json().customer).not.to.have.property('password'); });",
+              "pm.test('Login sets the token cookie as HttpOnly', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.match(/token=.*HttpOnly/i); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/customers/login"
+      }
+    },
+    {
+      "name": "2. Create temporary product for wishlist tests",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Product creation returns 201', function () { pm.response.to.have.status(201); });",
+              "const body = pm.response.json();",
+              "pm.test('Product is created', function () { pm.expect(body.success).to.eql(true); pm.expect(body.product).to.have.property('_id'); });",
+              "pm.collectionVariables.set('productId', body.product._id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{tempProductName}}\",\n  \"description\": \"Temporary product for wishlist and cart checks.\",\n  \"price\": 1,\n  \"category\": \"Books\",\n  \"image\": \"/products/fiction-novels.jpg\",\n  \"stock\": 5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/products"
+      }
+    },
+    {
+      "name": "3. Add product to wishlist",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Add returns 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Add succeeds', function () { pm.expect(pm.response.json().success).to.eql(true); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/wishlist/{{productId}}"
+      }
+    },
+    {
+      "name": "4. Duplicate add returns 409 Conflict",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Duplicate returns 409 Conflict', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/wishlist/{{productId}}"
+      }
+    },
+    {
+      "name": "5. Get current customer's wishlist",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get wishlist returns 200', function () { pm.response.to.have.status(200); });",
+              "const body = pm.response.json();",
+              "pm.test('Wishlist contains this test product exactly once', function () { pm.expect(body.count).to.eql(1); pm.expect(body.wishlist).to.have.lengthOf(1); pm.expect(body.wishlist[0]._id).to.eql(pm.collectionVariables.get('productId')); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/wishlist"
+      }
+    },
+    {
+      "name": "6. Remove product from wishlist",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Remove returns 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/wishlist/{{productId}}"
+      }
+    },
+    {
+      "name": "7. Confirm wishlist is empty after removal",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get after removal returns 200 and an empty list', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().count).to.eql(0); pm.expect(pm.response.json().wishlist).to.have.lengthOf(0); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/wishlist"
+      }
+    },
+    {
+      "name": "8. Removing an absent item returns 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Absent item removal returns 404', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/wishlist/{{productId}}"
+      }
+    },
+    {
+      "name": "9. Unauthenticated GET wishlist returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated GET returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{anonymousBaseUrl}}/wishlist"
+      }
+    },
+    {
+      "name": "10. Unauthenticated add returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated add returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{anonymousBaseUrl}}/wishlist/{{productId}}"
+      }
+    },
+    {
+      "name": "11. Unauthenticated remove returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated remove returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "url": "{{anonymousBaseUrl}}/wishlist/{{productId}}"
+      }
+    },
+    {
+      "name": "12. Add product to cart starts at quantity 1",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Add to cart returns 200', function () { pm.response.to.have.status(200); });",
+              "const cart = pm.response.json().cart;",
+              "pm.test('New cart row has quantity 1', function () { const row = cart.find((item) => item.product._id === pm.collectionVariables.get('productId')); pm.expect(row).to.exist; pm.expect(row.quantity).to.eql(1); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "13. Adding same product increments quantity",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Second add returns 200', function () { pm.response.to.have.status(200); });",
+              "const cart = pm.response.json().cart;",
+              "pm.test('Existing row increments to quantity 2 without a duplicate row', function () { const rows = cart.filter((item) => item.product._id === pm.collectionVariables.get('productId')); pm.expect(rows).to.have.lengthOf(1); pm.expect(rows[0].quantity).to.eql(2); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "14. Get cart returns populated product data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Get cart returns 200', function () { pm.response.to.have.status(200); });",
+              "const cart = pm.response.json().cart;",
+              "pm.test('Cart row has populated product details and quantity 2', function () { const row = cart.find((item) => item.product._id === pm.collectionVariables.get('productId')); pm.expect(row).to.exist; pm.expect(row.product).to.have.property('name'); pm.expect(row.product).to.have.property('price'); pm.expect(row.product).to.have.property('stock'); pm.expect(row.quantity).to.eql(2); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cart"
+      }
+    },
+    {
+      "name": "15. Update cart quantity",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Quantity update returns 200', function () { pm.response.to.have.status(200); });",
+              "const cart = pm.response.json().cart;",
+              "pm.test('Quantity is updated to 3', function () { const row = cart.find((item) => item.product._id === pm.collectionVariables.get('productId')); pm.expect(row).to.exist; pm.expect(row.quantity).to.eql(3); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 3\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "16. Reject quantity above stock",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Quantity above stock returns 400', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 6\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "17. Rejected quantity leaves cart unchanged",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Cart remains available after rejected update', function () { pm.response.to.have.status(200); });",
+              "const row = pm.response.json().cart.find((item) => item.product._id === pm.collectionVariables.get('productId'));",
+              "pm.test('Quantity remains 3', function () { pm.expect(row).to.exist; pm.expect(row.quantity).to.eql(3); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/cart"
+      }
+    },
+    {
+      "name": "18. Remove product from cart",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Cart remove returns 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Removed cart is empty', function () { pm.expect(pm.response.json().cart).to.have.lengthOf(0); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "19. Unauthenticated GET cart returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated GET cart returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{anonymousBaseUrl}}/cart"
+      }
+    },
+    {
+      "name": "20. Unauthenticated add to cart returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated cart add returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "url": "{{anonymousBaseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "21. Unauthenticated update cart returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated cart update returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 2\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{anonymousBaseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "22. Unauthenticated remove from cart returns 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unauthenticated cart remove returns 401', function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "url": "{{anonymousBaseUrl}}/cart/{{productId}}"
+      }
+    },
+    {
+      "name": "ShopKart — Lab 06 Checkout & Orders API Checks",
+      "description": "Run requests sequentially. Creates temporary users, product, pending ShopKart order and Razorpay Test Mode order. Optional stock check: add the product to cart, lower its stock below the cart quantity in MongoDB, set lab06RunStockTest=true, and run request 5a; expect 400, then restore stock and set the variable back to false. Request 21 is optional and requires a real Razorpay Test Mode checkout. To check cancellation, close Razorpay Checkout and run requests 10–11; the order should remain pending and the cart unchanged.",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (!pm.collectionVariables.get('lab06TestEmail')) pm.collectionVariables.set('lab06TestEmail', 'lab06.postman.' + Date.now() + '@example.test');",
+              "if (!pm.collectionVariables.get('lab06OtherEmail')) pm.collectionVariables.set('lab06OtherEmail', 'lab06.other.' + Date.now() + '@example.test');",
+              "if (!pm.collectionVariables.get('lab06ProductName')) pm.collectionVariables.set('lab06ProductName', 'Lab06 Checkout Temp ' + Date.now());"
+            ]
+          }
+        }
+      ],
+      "item": [
+        {
+          "name": "0. Register temporary Lab 06 customer",
+          "description": "Creates a fresh test account for each complete folder run.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Lab 06 Postman Verification\",\n  \"email\": \"{{lab06TestEmail}}\",\n  \"password\": \"{{lab06TestPassword}}\",\n  \"phone\": \"9876543210\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/customers/register"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const runId = Date.now();",
+                  "pm.collectionVariables.set('lab06TestEmail', 'lab06.postman.' + runId + '@example.test');",
+                  "pm.collectionVariables.set('lab06OtherEmail', 'lab06.other.' + runId + '@example.test');",
+                  "pm.collectionVariables.set('lab06ProductName', 'Lab06 Checkout Temp ' + runId);",
+                  "pm.collectionVariables.set('lab06RazorpayPaymentId', '');",
+                  "pm.collectionVariables.set('lab06RazorpaySignature', '');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registration returns 201 and omits password', function () { pm.response.to.have.status(201); pm.expect(pm.response.json().customer).not.to.have.property('password'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1. Login Lab 06 customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lab06TestEmail}}\",\n  \"password\": \"{{lab06TestPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/customers/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login returns 200 and sets HttpOnly cookie', function () { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('Set-Cookie')).to.match(/token=.*HttpOnly/i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Create temporary checkout product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{lab06ProductName}}\",\n  \"description\": \"Temporary product for Lab 06 checkout checks.\",\n  \"price\": 2198,\n  \"category\": \"Books\",\n  \"image\": \"/products/fiction-novels.jpg\",\n  \"stock\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Product creation returns 201', function () { pm.response.to.have.status(201); });",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('lab06ProductId', body.product._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Empty cart cannot create payment order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Lab 06 Customer\",\n    \"phone\": \"9876543210\",\n    \"addressLine1\": \"22 MG Road\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"pincode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/create-payment-order"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Empty cart returns 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Add checkout product to cart",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/cart/{{lab06ProductId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cart has one test item', function () { pm.response.to.have.status(200); const row = pm.response.json().cart.find((x) => x.product._id === pm.collectionVariables.get('lab06ProductId')); pm.expect(row.quantity).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5a. Optional: reject stock changed below cart quantity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Lab 06 Customer\",\n    \"phone\": \"9876543210\",\n    \"addressLine1\": \"22 MG Road\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"pincode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/create-payment-order"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('lab06RunStockTest') !== 'true') { console.log('Skipped: lower this cart product stock in MongoDB and set lab06RunStockTest=true first.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Checkout rejects stock below cart quantity', function () { pm.response.to.have.status(400); pm.expect(pm.response.json().message).to.match(/stock/i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Reject invalid Indian phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Lab 06 Customer\",\n    \"phone\": \"1234567890\",\n    \"addressLine1\": \"22 MG Road\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"pincode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/create-payment-order"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid phone returns 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Reject invalid pincode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Lab 06 Customer\",\n    \"phone\": \"9876543210\",\n    \"addressLine1\": \"22 MG Road\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"pincode\": \"123\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/create-payment-order"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid pincode returns 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Create pending ShopKart and Razorpay orders",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Lab 06 Customer\",\n    \"phone\": \"+919876543210\",\n    \"addressLine1\": \"22 MG Road\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"pincode\": \"560001\"\n  },\n  \"totalAmount\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/create-payment-order"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Both orders are created', function () { pm.response.to.have.status(201); });",
+                  "const b = pm.response.json();",
+                  "pm.test('Server ignores fake total and converts INR to paise', function () { pm.expect(b.order.totalAmount).to.eql(2198); pm.expect(b.amount).to.eql(219800); pm.expect(b.currency).to.eql('INR'); });",
+                  "pm.test('Purchase snapshot is returned and secret is not exposed', function () { pm.expect(b.order.items[0].name).to.eql(pm.collectionVariables.get('lab06ProductName')); pm.expect(b.order.items[0].price).to.eql(2198); pm.expect(b).to.have.property('key'); pm.expect(b).not.to.have.property('key_secret'); });",
+                  "pm.collectionVariables.set('lab06ShopKartOrderId', b.shopKartOrderId);",
+                  "pm.collectionVariables.set('lab06RazorpayOrderId', b.razorpayOrderId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Cart remains before payment verification",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/cart"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cart remains populated before verification', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().cart.some((x) => x.product._id === pm.collectionVariables.get('lab06ProductId'))).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Fake payment signature returns 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopKartOrderId\": \"{{lab06ShopKartOrderId}}\",\n  \"razorpay_order_id\": \"{{lab06RazorpayOrderId}}\",\n  \"razorpay_payment_id\": \"pay_fake_lab06\",\n  \"razorpay_signature\": \"invalid-signature\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/verify-payment"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Fake signature is rejected', function () { pm.response.to.have.status(400); pm.expect(pm.response.json().message).to.match(/signature/i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Fake payment leaves order pending",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{lab06ShopKartOrderId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Order stays pending after invalid signature', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().order.paymentStatus).to.eql('PENDING'); pm.expect(pm.response.json().order.status).to.eql('PENDING_PAYMENT'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Fake payment leaves cart unchanged",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/cart"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cart stays populated after invalid signature', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().cart.some((x) => x.product._id === pm.collectionVariables.get('lab06ProductId'))).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Get current customer's orders",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Orders are newest first and include this order', function () { pm.response.to.have.status(200); const o = pm.response.json().orders; pm.expect(o[0]._id).to.eql(pm.collectionVariables.get('lab06ShopKartOrderId')); if (o.length > 1) pm.expect(new Date(o[0].createdAt).getTime()).to.be.at.least(new Date(o[1].createdAt).getTime()); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Get one owned order",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{lab06ShopKartOrderId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner can retrieve their order', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().order._id).to.eql(pm.collectionVariables.get('lab06ShopKartOrderId')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Unauthenticated GET orders returns 401",
+          "request": {
+            "method": "GET",
+            "url": "{{anonymousBaseUrl}}/orders"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated request returns 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Unauthenticated create payment order returns 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shippingAddress\": {\n    \"fullName\": \"Lab 06 Customer\",\n    \"phone\": \"9876543210\",\n    \"addressLine1\": \"22 MG Road\",\n    \"city\": \"Bengaluru\",\n    \"state\": \"Karnataka\",\n    \"pincode\": \"560001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{anonymousBaseUrl}}/orders/create-payment-order"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated request returns 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Unauthenticated payment verification returns 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopKartOrderId\": \"{{lab06ShopKartOrderId}}\",\n  \"razorpay_order_id\": \"{{lab06RazorpayOrderId}}\",\n  \"razorpay_payment_id\": \"pay_fake_lab06\",\n  \"razorpay_signature\": \"invalid-signature\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{anonymousBaseUrl}}/orders/verify-payment"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthenticated request returns 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Register second customer for ownership check",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Lab 06 Other Customer\",\n  \"email\": \"{{lab06OtherEmail}}\",\n  \"password\": \"{{lab06TestPassword}}\",\n  \"phone\": \"9876543211\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/customers/register"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Second customer registers', function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Login as second customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lab06OtherEmail}}\",\n  \"password\": \"{{lab06TestPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/customers/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Second customer login succeeds', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. Second customer cannot access first customer's order",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/orders/{{lab06ShopKartOrderId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Different owner receives 404', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "20. Restore Lab 06 customer session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{lab06TestEmail}}\",\n  \"password\": \"{{lab06TestPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/customers/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Original test customer session is restored', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21. Verify successful Razorpay Test Mode payment (manual)",
+          "description": "Optional: complete a successful Razorpay Test Mode checkout in the frontend as this Lab 06 customer. In DevTools > Network, copy shopKartOrderId, razorpay_order_id, razorpay_payment_id and razorpay_signature from the successful POST /orders/verify-payment payload into the matching lab06 collection variables, then run this idempotent confirmation. Never store the Razorpay secret in Postman.",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shopKartOrderId\": \"{{lab06ShopKartOrderId}}\",\n  \"razorpay_order_id\": \"{{lab06RazorpayOrderId}}\",\n  \"razorpay_payment_id\": \"{{lab06RazorpayPaymentId}}\",\n  \"razorpay_signature\": \"{{lab06RazorpaySignature}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/orders/verify-payment"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('lab06RazorpayPaymentId') || !pm.collectionVariables.get('lab06RazorpaySignature')) { console.log('Skipped: set the four lab06 payment variables from a successful Razorpay Test Mode checkout.'); pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Valid payment signature is accepted', function () { pm.response.to.have.status(200); });",
+                  "const o = pm.response.json().order;",
+                  "pm.test('Order is PAID and PLACED and stores payment ID', function () { pm.expect(o.paymentStatus).to.eql('PAID'); pm.expect(o.status).to.eql('PLACED'); pm.expect(o.razorpayPaymentId).to.eql(pm.collectionVariables.get('lab06RazorpayPaymentId')); });",
+                  "pm.collectionVariables.set('lab06ShopKartOrderId', o._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22. Confirm verified payment cleared cart",
+          "description": "Run after the successful-payment request with the same customer session.",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/cart"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cart is empty after verified payment', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().cart).to.have.lengthOf(0); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

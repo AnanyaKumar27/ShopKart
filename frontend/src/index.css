@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --blush: #fff4f2;
+  --blush-deep: #f9dfdc;
+  --coral: #ed665d;
+  --coral-dark: #d95149;
+  --ink: #302d2e;
+  --muted: #777071;
+  --line: #f0d9d6;
+  --paper: #fffdfc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", Roboto, sans-serif;
+  background: var(--blush);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keep the existing Tailwind markup and behavior, using the reference palette. */
+.bg-white { background-color: var(--paper) !important; }
+.bg-gray-50, .bg-gray-100 { background-color: var(--blush) !important; }
+.bg-gray-900 { background-color: var(--ink) !important; }
+.bg-gray-100 { background-color: var(--blush-deep) !important; }
+.bg-indigo-50, .bg-pink-100 { background-color: var(--blush-deep) !important; }
+.bg-indigo-600, .bg-indigo-700, .bg-pink-600 { background-color: var(--coral) !important; }
+.hover\:bg-indigo-700:hover, .hover\:bg-indigo-700:hover,
+.hover\:bg-pink-100:hover { background-color: var(--coral-dark) !important; }
+.text-indigo-600, .text-indigo-700, .text-pink-600 { color: var(--coral-dark) !important; }
+.hover\:text-indigo-600:hover, .hover\:text-indigo-700:hover { color: var(--coral-dark) !important; }
+.border-indigo-600 { border-color: var(--coral) !important; }
+.focus\:ring-indigo-500:focus { --tw-ring-color: var(--coral) !important; }
+.text-gray-900, .text-gray-800, .text-gray-700 { color: var(--ink) !important; }
+.text-gray-600, .text-gray-500, .text-gray-400 { color: var(--muted) !important; }
+.border-gray-100, .border-gray-200, .border-gray-300 { border-color: var(--line) !important; }
+.bg-red-50 { background-color: #fff0ef !important; }
+.text-red-600 { color: var(--coral-dark) !important; }
+.hover\:bg-red-100:hover { background-color: var(--blush-deep) !important; }
+
+nav {
+  min-height: 68px;
+  padding-inline: clamp(18px, 5vw, 64px) !important;
+  background: var(--paper) !important;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 5px 24px rgb(90 52 48 / 5%) !important;
+}
+nav > a { color: var(--coral-dark) !important; letter-spacing: -.035em; }
+nav > div { gap: clamp(12px, 2.4vw, 30px) !important; }
+nav a, nav button { transition: color .18s ease, background-color .18s ease, transform .18s ease; }
+nav a:hover { color: var(--coral-dark) !important; }
+nav button { border-radius: 999px !important; padding: 9px 18px !important; }
+
+main, body > #root > div { color: var(--ink); }
+main > div, .max-w-6xl, .max-w-4xl, .max-w-3xl { width: min(100% - 36px, 1120px); }
+.rounded-xl, .rounded-2xl, .rounded-3xl { border-radius: 18px !important; }
+.shadow-sm { box-shadow: 0 8px 26px rgb(90 52 48 / 6%) !important; }
+.shadow-md { box-shadow: 0 14px 34px rgb(90 52 48 / 12%) !important; }
+
+/* Product cards use a compact catalog layout with roomy product photography. */
+.grid > div.bg-white.rounded-xl,
+.grid > a.bg-white.rounded-xl { border: 1px solid var(--line); }
+img.bg-gray-100 { background: var(--blush-deep) !important; }
+button, select, input { font: inherit; }
+input, select { color: var(--ink); background-color: var(--paper); }
+input::placeholder { color: #a49a9a; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 3px solid rgb(237 102 93 / 32%);
+  outline-offset: 2px;
+}
+
+/* Give the catalog hero the same warm coral treatment as the sample screens. */
+.bg-gradient-to-r {
+  background: linear-gradient(135deg, #f6aaa3 0%, var(--coral) 100%) !important;
+}
+.text-white { color: #fffdfc !important; }
+.border-white\/25 { border-color: rgb(255 253 252 / 45%) !important; }
+
+@media (max-width: 640px) {
+  nav { align-items: flex-start !important; flex-direction: column; gap: 12px; padding-block: 13px !important; }
+  nav > div { width: 100%; flex-wrap: wrap; gap: 9px 16px !important; font-size: 13px !important; }
+  nav button { padding: 7px 13px !important; }
+  .max-w-6xl, .max-w-4xl, .max-w-3xl { width: min(100% - 24px, 1120px); }
+  form.w-full { padding: 26px 22px !important; }
+}
