@@ -1,5 +1,9 @@
 # ShopKart — Full MERN Project
 
+ShopKart is a full-stack e-commerce application built with React, Node.js,
+Express, and MongoDB, featuring authentication, product search, wishlist,
+cart, and secure Razorpay checkout.
+
 Combines Labs 01–06 into one working app: Customer Authentication (JWT + HttpOnly
 cookies), Product Catalog with search/filter, Wishlist, and a persistent
 Shopping Cart (MongoDB references + `populate()`, stock validation, and shared
